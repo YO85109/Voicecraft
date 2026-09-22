@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceCraft - Proximity Realm Voice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Press Start 2P', monospace;
+            image-rendering: pixelated;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0d131a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            color: #fff;
+        }
+
+        #mcCanvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.85);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .top-bar {
+            position: fixed;
+            top: 14px; left: 14px; right: 14px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .hud-badge {
+            background: rgba(15, 15, 15, 0.85);
+            border: 2px solid #3c3c3c;
+            color: #ffff55;
+            padding: 8px 12px;
+            font-size: 0.6rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0 #000;
+        }
+        .hud-badge:hover { border-color: #fff; color: #fff; }
+        .hud-badge.online { color: #55ff55; }
+        .hud-badge.offline { color: #ff5555; }
+
+        .container {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            max-width: 480px;
+            padding: 16px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .mc-title {
+            font-size: 1.8rem;
+            color: #fff;
+            text-shadow: 4px 4px 0 #1b1b1b, -2px -2px 0 #000;
+            letter-spacing: 2px;
+        }
+
+        .splash-text {
+            position: absolute;
+            bottom: -16px;
+            right: 15px;
+            color: #ffff55;
+            font-size: 0.65rem;
+            transform: rotate(-12deg);
+            text-shadow: 2px 2px 0 #3f3f00;
+            animation: splashWobble 0.6s infinite alternate ease-in-out;
+            white-space: nowrap;
+        }
+
+        @keyframes splashWobble {
+            0% { transform: rotate(-12deg) scale(1); }
+            100% { transform: rotate(-12deg) scale(1.1); }
+        }
+
+        .mc-box {
+            background: rgba(36, 36, 36, 0.94);
+            border: 4px solid #000;
+            box-shadow: 
+                inset 4px 4px 0 #585858,
+                inset -4px -4px 0 #141414,
+                0 16px 36px rgba(0, 0, 0, 0.9);
+            padding: 24px 20px;
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        label {
+            font-size: 0.6rem;
+            color: #aaaaaa;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .rand-btn {
+            background: #222;
+            color: #ffff55;
+            border: 1px solid #555;
+            font-size: 0.55rem;
+            padding: 2px 6px;
+            cursor: pointer;
+        }
+        .rand-btn:hover { background: #333; }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #0d0d0d;
+            border: 3px solid #3c3c3c;
+            box-shadow: inset 3px 3px 0 #000;
+            color: #ffffff;
+            font-size: 0.75rem;
+            outline: none;
+        }
+
+        input:focus { border-color: #55ff55; }
+
+        .btn-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .mc-btn {
+            width: 100%;
+            padding: 14px 10px;
+            background: #4a4a4a;
+            border: 3px solid #000;
+            box-shadow: inset 3px 3px 0 #7e7e7e, inset -3px -3px 0 #242424;
+            color: #e0e0e0;
+            font-size: 0.72rem;
+            cursor: pointer;
+            text-shadow: 2px 2px 0 #111;
+        }
+
+        .mc-btn:hover {
+            color: #ffffa0;
+            background: #565656;
+            box-shadow: inset 3px 3px 0 #909090, inset -3px -3px 0 #181818;
+        }
+
+        .mc-btn:active {
+            box-shadow: inset -3px -3px 0 #909090, inset 3px 3px 0 #181818;
+            transform: translate(2px, 2px);
+        }
+
+        .mc-btn.green {
+            background: #2e6f40;
+            box-shadow: inset 3px 3px 0 #4ea668, inset -3px -3px 0 #133a1e;
+            color: #a8ffbe;
+        }
+        .mc-btn.green:hover {
+            background: #39834e;
+            color: #ffffff;
+            box-shadow: inset 3px 3px 0 #63cb83, inset -3px -3px 0 #184825;
+        }
+
+        .mc-btn.red {
+            background: #7a2222;
+            box-shadow: inset 3px 3px 0 #a83e3e, inset -3px -3px 0 #3a0d0d;
+        }
+        .mc-btn.red:hover {
+            background: #8e2b2b;
+            color: #ffcccc;
+        }
+
+        .mc-btn:disabled {
+            background: #2b2b2b !important;
+            color: #777 !important;
+            box-shadow: inset 2px 2px 0 #1b1b1b, inset -2px -2px 0 #1b1b1b !important;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .error-banner {
+            color: #ff5555;
+            font-size: 0.65rem;
+            text-align: center;
+            margin-top: 14px;
+            text-shadow: 1px 1px 0 #000;
+            min-height: 16px;
+            line-height: 1.4;
+        }
+
+        .realm-screen { display: none; }
+
+        .realm-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            background: #141414;
+            padding: 10px 14px;
+            border: 2px solid #000;
+        }
+
+        .realm-tag {
+            font-size: 0.65rem;
+            color: #55ff55;
+            text-shadow: 1px 1px 0 #003300;
+        }
+
+        .player-count {
+            font-size: 0.6rem;
+            color: #55ffff;
+        }
+
+        .xp-meter-wrapper { margin-bottom: 20px; }
+        .xp-label {
+            font-size: 0.55rem;
+            color: #55ff55;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .xp-bar {
+            width: 100%;
+            height: 10px;
+            background: #000;
+            border: 2px solid #3a3a3a;
+        }
+        .xp-fill {
+            height: 100%;
+            width: 0%;
+            background: #55ff55;
+            box-shadow: 0 0 10px #55ff55;
+            transition: width 0.08s ease-out;
+        }
+
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .player-card {
+            background: #171717;
+            border: 3px solid #3c3c3c;
+            padding: 8px 4px;
+            text-align: center;
+            box-shadow: inset 2px 2px 0 #000;
+        }
+
+        .player-card.speaking {
+            border-color: #55ff55 !important;
+            box-shadow: 0 0 12px #55ff55, inset 2px 2px 0 #000 !important;
+        }
+
+        .player-avatar {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 6px auto;
+            display: block;
+            border: 2px solid #000;
+            background: #000;
+        }
+
+        .player-name {
+            font-size: 0.55rem;
+            color: #e0e0e0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="mcCanvas"></canvas>
+<div class="vignette"></div>
+
+<div class="top-bar">
+    <button class="hud-badge" id="biomeBtn">🌍 BIOME: DAY</button>
+    <div class="hud-badge offline" id="serverStatusBadge">● CONNECTING...</div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <h1 class="mc-title">VOICECRAFT</h1>
+        <div class="splash-text" id="splash">PVP Enabled!</div>
+    </div>
+
+    <div class="mc-box">
+        <!-- 1. Lobby Form -->
+        <div id="lobbyView">
+            <div class="input-group">
+                <div class="label-row">
+                    <label for="ignInput">MINECRAFT USERNAME</label>
+                </div>
+                <input type="text" id="ignInput" placeholder="Steve" maxlength="16" autocomplete="off" value="Steve">
+            </div>
+
+            <div class="input-group">
+                <div class="label-row">
+                    <label for="roomInput">REALM NAME</label>
+                    <button type="button" class="rand-btn" id="randRealmBtn">🎲 RANDOM</button>
+                </div>
+                <input type="text" id="roomInput" placeholder="e.g. survival-smp" autocomplete="off">
+            </div>
+
+            <div class="input-group">
+                <div class="label-row">
+                    <label for="passInput">SECRET KEY (PASSWORD)</label>
+                    <span style="font-size:0.5rem; color:#888;">(OPTIONAL)</span>
+                </div>
+                <input type="password" id="passInput" placeholder="Leave empty for public">
+            </div>
+
+            <div class="btn-stack">
+                <button type="button" class="mc-btn green" id="createBtn">➕ CREATE REALM</button>
+                <button type="button" class="mc-btn" id="joinBtn">🚪 JOIN REALM</button>
+            </div>
+
+            <div class="error-banner" id="errorMsg"></div>
+        </div>
+
+        <!-- 2. Inside Realm View -->
+        <div id="realmView" class="realm-screen">
+            <div class="realm-meta">
+                <div class="realm-tag" id="roomTag">REALM: -</div>
+                <div class="player-count" id="playerCount">PLAYERS: 1</div>
+            </div>
+
+            <div class="xp-meter-wrapper">
+                <div class="xp-label">
+                    <span>MIC SIGNAL</span>
+                    <span id="micStateText">TRANSMITTING</span>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xpFill"></div>
+                </div>
+            </div>
+
+            <label>ONLINE IN PROXIMITY</label>
+            <div class="player-grid" id="playerGrid"></div>
+
+            <div class="btn-stack">
+                <button type="button" class="mc-btn" id="muteBtn">MUTE MIC</button>
+                <button type="button" class="mc-btn red" id="leaveBtn">DISCONNECT</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="audioPool"></div>
+
+<!-- Fallback CDN for Socket.IO -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    if (typeof io === 'undefined') {
+        document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
+    }
+</script>
+
+<script>
+    // 1. Minecraft Procedural Skybox
+    const canvas = document.getElementById('mcCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const biomes = [
+        { name: "DAY", skyTop: "#1c6dae", skyBottom: "#8ecbf8", sunColor: "#fff", sunBorder: "#ffea78", cloudColor: "rgba(255,255,255,0.85)", cloudShadow: "rgba(180,195,215,0.85)", mountainFar: "#3d647a", mountainNear: "#1c3c4a", isNight: false, isNether: false },
+        { name: "SUNSET", skyTop: "#2d1645", skyBottom: "#d85b28", sunColor: "#ff9f43", sunBorder: "#ee5253", cloudColor: "rgba(255,175,130,0.85)", cloudShadow: "rgba(140,70,80,0.85)", mountainFar: "#421e3c", mountainNear: "#250d22", isNight: false, isNether: false },
+        { name: "NIGHT", skyTop: "#03060f", skyBottom: "#0b192e", sunColor: "#d9e2ec", sunBorder: "#9fb3c8", cloudColor: "rgba(35,55,80,0.6)", cloudShadow: "rgba(15,25,45,0.6)", mountainFar: "#0e1a2b", mountainNear: "#060c14", isNight: true, isNether: false },
+        { name: "NETHER", skyTop: "#2b0404", skyBottom: "#751811", sunColor: "transparent", sunBorder: "transparent", cloudColor: "rgba(50,10,10,0.6)", cloudShadow: "rgba(20,5,5,0.8)", mountainFar: "#3d0a0a", mountainNear: "#1c0303", isNight: false, isNether: true }
+    ];
+
+    let currentBiome = 0;
+    const biomeBtn = document.getElementById('biomeBtn');
+    biomeBtn.onclick = () => {
+        currentBiome = (currentBiome + 1) % biomes.length;
+        biomeBtn.innerText = `🌍 BIOME: ${biomes[currentBiome].name}`;
+    };
+
+    const clouds = Array.from({ length: 18 }, () => ({
+        x: Math.random() * 2000,
+        y: Math.random() * 250 + 20,
+        w: Math.floor(Math.random() * 120 + 80),
+        h: Math.floor(Math.random() * 30 + 25),
+        speed: Math.random() * 0.4 + 0.2
+    }));
+
+    const embers = Array.from({ length: 40 }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 4 + 2,
+        speedY: Math.random() * 0.8 + 0.3,
+        alpha: Math.random() * 0.8 + 0.2
+    }));
+
+    function renderWorld() {
+        const b = biomes[currentBiome];
+        const w = canvas.width, h = canvas.height;
+
+        const sky = ctx.createLinearGradient(0, 0, 0, h);
+        sky.addColorStop(0, b.skyTop);
+        sky.addColorStop(1, b.skyBottom);
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+
+        if (b.isNight) {
+            ctx.fillStyle = "#ffffff";
+            for (let i = 0; i < 60; i++) {
+                ctx.fillRect((i * 97) % w, (i * 53) % (h * 0.65), 2, 2);
+            }
+        }
+
+        if (!b.isNether) {
+            ctx.fillStyle = b.sunBorder;
+            ctx.fillRect(w * 0.72 - 32, h * 0.22 - 32, 64, 64);
+            ctx.fillStyle = b.sunColor;
+            ctx.fillRect(w * 0.72 - 26, h * 0.22 - 26, 52, 52);
+        }
+
+        clouds.forEach(c => {
+            c.x += c.speed;
+            if (c.x > w + 200) c.x = -250;
+            ctx.fillStyle = b.cloudColor;
+            ctx.fillRect(Math.floor(c.x), Math.floor(c.y), c.w, c.h - 6);
+            ctx.fillStyle = b.cloudShadow;
+            ctx.fillRect(Math.floor(c.x), Math.floor(c.y + c.h - 6), c.w, 6);
+        });
+
+        const horizon = h * 0.72;
+        ctx.fillStyle = b.mountainFar;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let x = 0; x <= w; x += 40) {
+            ctx.lineTo(x, Math.floor((horizon - 50 - Math.sin(x * 0.005) * 45) / 8) * 8);
+        }
+        ctx.lineTo(w, h);
+        ctx.fill();
+
+        ctx.fillStyle = b.mountainNear;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        for (let x = 0; x <= w; x += 30) {
+            ctx.lineTo(x, Math.floor((horizon + Math.sin(x * 0.008) * 35 - 10) / 8) * 8);
+        }
+        ctx.lineTo(w, h);
+        ctx.fill();
+
+        embers.forEach(p => {
+            p.y -= p.speedY;
+            if (p.y < 0) { p.y = h + 10; p.x = Math.random() * w; }
+            ctx.fillStyle = b.isNether 
+                ? `rgba(255, ${Math.floor(Math.random()*80 + 50)}, 0, ${p.alpha})`
+                : `rgba(255, 255, 180, ${p.alpha * 0.5})`;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+        });
+
+        requestAnimationFrame(renderWorld);
+    }
+    renderWorld();
+
+    // 2. 8-Bit Click Audio
+    let audioCtx = null;
+    function playClick() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.04);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.04);
+        } catch(e){}
+    }
+    document.querySelectorAll('button').forEach(btn => btn.addEventListener('click', playClick));
+
+    // 3. Socket & WebRTC Logic
+    const serverStatusBadge = document.getElementById('serverStatusBadge');
+    let socket = null;
+
+    try {
+        socket = io();
+        socket.on('connect', () => {
+            serverStatusBadge.innerText = '● REALM ONLINE';
+            serverStatusBadge.className = 'hud-badge online';
+        });
+        socket.on('disconnect', () => {
+            serverStatusBadge.innerText = '● DISCONNECTED';
+            serverStatusBadge.className = 'hud-badge offline';
+        });
+        socket.on('connect_error', () => {
+            serverStatusBadge.innerText = '● SERVER OFFLINE';
+            serverStatusBadge.className = 'hud-badge offline';
+        });
+    } catch(e) {
+        serverStatusBadge.innerText = '● SCRIPT ERROR';
+    }
+
+    const ignInput = document.getElementById('ignInput');
+    const roomInput = document.getElementById('roomInput');
+    const passInput = document.getElementById('passInput');
+    const createBtn = document.getElementById('createBtn');
+    const joinBtn = document.getElementById('joinBtn');
+    const randRealmBtn = document.getElementById('randRealmBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const lobbyView = document.getElementById('lobbyView');
+    const realmView = document.getElementById('realmView');
+    const roomTag = document.getElementById('roomTag');
+    const playerCount = document.getElementById('playerCount');
+    const playerGrid = document.getElementById('playerGrid');
+    const xpFill = document.getElementById('xpFill');
+    const micStateText = document.getElementById('micStateText');
+    const muteBtn = document.getElementById('muteBtn');
+    const leaveBtn = document.getElementById('leaveBtn');
+    const audioPool = document.getElementById('audioPool');
+
+    const adjectives = ['diamond', 'creeper', 'nether', 'ender', 'redstone', 'emerald', 'obsidian', 'golden'];
+    const places = ['mine', 'plains', 'fortress', 'base', 'smp', 'cave', 'portal', 'keep'];
+    function getRandomName() {
+        const a = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const p = places[Math.floor(Math.random() * places.length)];
+        const n = Math.floor(Math.random() * 89 + 10);
+        return `${a}-${p}-${n}`;
+    }
+    roomInput.value = getRandomName();
+    randRealmBtn.onclick = () => { roomInput.value = getRandomName(); };
+
+    let myUsername = 'Steve';
+    let localStream = null;
+    let peers = {};
+    let isMuted = false;
+
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    async function handleAuth(actionType) {
+        errorMsg.innerText = '';
+        myUsername = (ignInput.value.trim() || 'Steve');
+        const roomId = roomInput.value.trim();
+        const password = passInput.value.trim();
+
+        if (!roomId) {
+            errorMsg.innerText = 'PLEASE ENTER A REALM NAME!';
+            return;
+        }
+
+        if (!socket || !socket.connected) {
+            errorMsg.innerText = 'NOT CONNECTED TO SERVER! RUN NODE SERVER.JS';
+            return;
+        }
+
+        const activeBtn = actionType === 'create' ? createBtn : joinBtn;
+        const originalText = activeBtn.innerText;
+        activeBtn.disabled = true;
+        activeBtn.innerText = 'ALLOW MIC...';
+
+        try {
+            if (!localStream) {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setupLocalMicMeter(localStream);
+            }
+        } catch (err) {
+            activeBtn.disabled = false;
+            activeBtn.innerText = originalText;
+            errorMsg.innerText = 'MIC BLOCKED! ALLOW MIC IN ADDRESS BAR.';
+            return;
+        }
+
+        activeBtn.innerText = 'CONNECTING...';
+
+        const endpoint = actionType === 'create' ? 'create-room' : 'join-room';
+
+        socket.emit(endpoint, { roomId, password, username: myUsername }, (res) => {
+            activeBtn.disabled = false;
+            activeBtn.innerText = originalText;
+
+            if (!res.success) {
+                errorMsg.innerText = res.message;
+                return;
+            }
+
+            lobbyView.style.display = 'none';
+            realmView.style.display = 'block';
+            roomTag.innerText = `REALM: ${res.roomId.toUpperCase()}`;
+
+            addPlayerCard(socket.id, myUsername, true);
+
+            if (res.existingUsers && res.existingUsers.length > 0) {
+                res.existingUsers.forEach(u => {
+                    initiateOffer(u.id, u.username);
+                });
+            }
+            updateCounts();
+        });
+    }
+
+    createBtn.onclick = () => handleAuth('create');
+    joinBtn.onclick = () => handleAuth('join');
+
+    function addPlayerCard(userId, username, isSelf = false) {
+        if (document.getElementById(`player-${userId}`)) return;
+
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        card.id = `player-${userId}`;
+
+        const head = document.createElement('img');
+        head.className = 'player-avatar';
+        head.src = `https://mc-heads.net/avatar/${encodeURIComponent(username)}/48`;
+
+        const name = document.createElement('div');
+        name.className = 'player-name';
+        name.innerText = isSelf ? `${username} (YOU)` : username;
+
+        card.appendChild(head);
+        card.appendChild(name);
+        playerGrid.appendChild(card);
+    }
+
+    function setupLocalMicMeter(stream) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = ctx.createAnalyser();
+            const src = ctx.createMediaStreamSource(stream);
+            src.connect(analyser);
+            analyser.fftSize = 64;
+            const data = new Uint8Array(analyser.frequencyBinCount);
+
+            function update() {
+                analyser.getByteFrequencyData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) sum += data[i];
+                let avg = sum / data.length;
+                let pct = Math.min(100, Math.round((avg / 60) * 100));
+
+                xpFill.style.width = isMuted ? '0%' : pct + '%';
+
+                const myCard = document.getElementById(`player-${socket.id}`);
+                if (myCard) {
+                    if (pct > 15 && !isMuted) myCard.classList.add('speaking');
+                    else myCard.classList.remove('speaking');
+                }
+                requestAnimationFrame(update);
+            }
+            update();
+        } catch(e){}
+    }
+
+    function attachVoiceDetector(userId, remoteStream) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = ctx.createAnalyser();
+            const src = ctx.createMediaStreamSource(remoteStream);
+            src.connect(analyser);
+            analyser.fftSize = 64;
+            const data = new Uint8Array(analyser.frequencyBinCount);
+
+            function check() {
+                analyser.getByteFrequencyData(data);
+                let sum = 0;
+                for (let i = 0; i < data.length; i++) sum += data[i];
+                let avg = sum / data.length;
+                const card = document.getElementById(`player-${userId}`);
+                if (card) {
+                    if (avg > 15) card.classList.add('speaking');
+                    else card.classList.remove('speaking');
+                }
+                if (peers[userId]) requestAnimationFrame(check);
+            }
+            check();
+        } catch(e){}
+    }
+
+    async function initiateOffer(targetId, targetUsername) {
+        addPlayerCard(targetId, targetUsername);
+        const pc = createPC(targetId);
+        peers[targetId] = { pc, username: targetUsername };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socket.emit('offer', { target: targetId, sdp: offer, username: myUsername });
+    }
+
+    if (socket) {
+        socket.on('offer', async ({ callerId, sdp, username }) => {
+            addPlayerCard(callerId, username);
+            const pc = createPC(callerId);
+            peers[callerId] = { pc, username };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            socket.emit('answer', { target: callerId, sdp: answer });
+            updateCounts();
+        });
+
+        socket.on('answer', async ({ responderId, sdp }) => {
+            if (peers[responderId]) {
+                await peers[responderId].pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            }
+        });
+
+        socket.on('ice-candidate', async ({ senderId, candidate }) => {
+            if (peers[senderId] && candidate) {
+                await peers[senderId].pc.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+        });
+
+        socket.on('user-joined', ({ userId, username }) => {
+            addPlayerCard(userId, username);
+            updateCounts();
+        });
+
+        socket.on('user-left', (userId) => {
+            if (peers[userId]) {
+                peers[userId].pc.close();
+                delete peers[userId];
+            }
+            const card = document.getElementById(`player-${userId}`);
+            if (card) card.remove();
+            const aud = document.getElementById(`audio-${userId}`);
+            if (aud) aud.remove();
+            updateCounts();
+        });
+    }
+
+    function createPC(targetId) {
+        const pc = new RTCPeerConnection(rtcConfig);
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+        pc.onicecandidate = (e) => {
+            if (e.candidate) socket.emit('ice-candidate', { target: targetId, candidate: e.candidate });
+        };
+
+        pc.ontrack = (e) => {
+            let aud = document.getElementById(`audio-${targetId}`);
+            if (!aud) {
+                aud = document.createElement('audio');
+                aud.id = `audio-${targetId}`;
+                aud.autoplay = true;
+                audioPool.appendChild(aud);
+            }
+            aud.srcObject = e.streams[0];
+            attachVoiceDetector(targetId, e.streams[0]);
+        };
+        return pc;
+    }
+
+    function updateCounts() {
+        const count = Object.keys(peers).length + 1;
+        playerCount.innerText = `PLAYERS: ${count}`;
+    }
+
+    muteBtn.onclick = () => {
+        isMuted = !isMuted;
+        if (localStream) localStream.getAudioTracks()[0].enabled = !isMuted;
+        muteBtn.innerText = isMuted ? 'UNMUTE MIC' : 'MUTE MIC';
+        muteBtn.classList.toggle('red', isMuted);
+        micStateText.innerText = isMuted ? 'MUTED' : 'TRANSMITTING';
+        micStateText.style.color = isMuted ? '#ff5555' : '#55ff55';
+    };
+
+    leaveBtn.onclick = () => {
+        if (socket) socket.emit('leave-room');
+        Object.keys(peers).forEach(id => {
+            peers[id].pc.close();
+            delete peers[id];
+        });
+        peers = {};
+        audioPool.innerHTML = '';
+        playerGrid.innerHTML = '';
+        realmView.style.display = 'none';
+        lobbyView.style.display = 'block';
+    };
+</script>
+</body>
+</html>
